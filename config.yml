@@ -13,7 +13,7 @@ num_workers: 4  # larger need big RAM
 
 # Model
 model_type: LitModule
-model_name: efficientnet_b2  # efficientnet_b2 swin_base_patch4_window7_224 conv_small
+model_name: swin_base_patch4_window7_224  # efficientnet_b2 swin_base_patch4_window7_224 convnext_small
 pretrained: true
 drop_rate: 0.0
 embedding_size: 512
@@ -25,6 +25,7 @@ arc_ls_eps: 0.0
 optimizer: adam
 learning_rate: 3.0e-4
 weight_decay: 1.0e-6
+bnneck: true
 
 # Train parameters
 accumulate_grad_batches: 1

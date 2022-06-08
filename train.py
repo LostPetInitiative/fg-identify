@@ -99,6 +99,10 @@ if __name__ == "__main__":
     if args.debug:
         exp_name = "debug_" + exp_name
 
+    if cfg['bnneck']:
+        print("USE BNNECK")
+        exp_name += "_bnneck"
+
     cfg['name'] = exp_name
     exp_dir = Path(cfg['output_dir']) / exp_name
     exp_dir.mkdir(parents=True, exist_ok=True)

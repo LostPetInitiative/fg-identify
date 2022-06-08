@@ -220,16 +220,22 @@ def create_input_file(path):
     return df
 
 
-def run_predict(name, model, device, data):
-    lost_query_path = f"/data/hse/data/{data}/lost/lost/"
-    lost_answer_path = f"/data/hse/data/{data}/lost/synthetic_found/"
-    found_query_path = f"/data/hse/data/{data}/found/found/"
-    found_answer_path = f"/data/hse/data/{data}/found/synthetic_lost/"
+def run_predict(name, model, device, data, img_type='origin'):
+    if img_type == "head":
+        img_type = "data_crop_head"
+    elif img_type == "body":
+        img_type = "data_crop_body"
+    else:
+        img_type = "data"
+    lost_query_path = f"/data/hse/{img_type}/{data}/lost/lost/"
+    lost_answer_path = f"/data/hse/{img_type}/{data}/lost/synthetic_found/"
+    found_query_path = f"/data/hse/{img_type}/{data}/found/found/"
+    found_answer_path = f"/data/hse/{img_type}/{data}/found/synthetic_lost/"
 
-    lost_query = "/data/hse/data/lost_query.csv"
-    lost_answer = "/data/hse/data/lost_answer.csv"
-    found_query = "/data/hse/data/found_query.csv"
-    found_answer = "/data/hse/data/found_answer.csv"
+    lost_query = f"/data/hse/{img_type}/lost_query.csv"
+    lost_answer = f"/data/hse/{img_type}/lost_answer.csv"
+    found_query = f"/data/hse/{img_type}/found_query.csv"
+    found_answer = f"/data/hse/{img_type}/found_answer.csv"
 
     create_input_file(lost_query_path).to_csv(lost_query, index=False)
     create_input_file(lost_answer_path).to_csv(lost_answer, index=False)

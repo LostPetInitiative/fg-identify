@@ -87,6 +87,7 @@ class LitModule(pl.LightningModule):
             weight_decay: float,
             len_train_dl: int,
             max_epochs: int,
+            bnneck=False,
             **kw,
     ):
         super().__init__()
@@ -109,6 +110,9 @@ class LitModule(pl.LightningModule):
             easy_margin=arc_easy_margin,
             ls_eps=arc_ls_eps,
         )
+        if bnneck:
+            self.bnneck = nn.BatchNorm1d(self.embedding_size)
+
         self.loss_fn = F.cross_entropy
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
@@ -142,6 +146,10 @@ class LitModule(pl.LightningModule):
     def _step(self, batch: Dict[str, torch.Tensor], step: str) -> torch.Tensor:
         images, targets = batch["images"], batch["target"]
         embeddings = self.dropout(self(images))
+
+        if hasattr(self, 'bnneck'):
+            embeddings = self.bnneck(embeddings)
+
         outputs = self.arc(embeddings, targets, self.device)
         loss = self.loss_fn(outputs, targets)
         acc = np.mean((torch.argmax(outputs, 1).cpu().numpy() == targets.cpu().numpy())).item()
