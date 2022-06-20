@@ -1,0 +1,37 @@
+# Global
+project: lostpet
+data: data25_crop_head
+seed: 2022
+output_dir: /data/hse/model/
+
+# DataModual
+train_csv: /data/hse/data_crop_body/train.csv
+test_csv: /data/hse/data_crop_body/val.csv
+image_size: 224
+batch_size: 32
+num_workers: 4  # larger need big RAM
+
+# Model
+model_type: LitModule
+model_name: swin_base_patch4_window7_224  # efficientnet_b2 swin_base_patch4_window7_224 convnext_small
+pretrained: true
+drop_rate: 0.0
+embedding_size: 512
+num_classes: 46391   # modify it responde
+arc_s: 30.0
+arc_m: 0.5
+arc_easy_margin: false
+arc_ls_eps: 0.0
+optimizer: adam
+learning_rate: 3.0e-4
+weight_decay: 1.0e-6
+bnneck: true
+
+# Train parameters
+accumulate_grad_batches: 1
+auto_lr_find: false
+auto_scale_batch_size: false
+fast_dev_run: false
+max_epochs: 10
+precision: 16
+stochastic_weight_avg: true

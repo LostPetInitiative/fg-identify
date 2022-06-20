@@ -95,7 +95,7 @@ def get_embeddings(ckpt, data_file, device="cuda:0", save=None):
 
 
 def _get_similarity(query_embed, query_df, answer_embed,
-                   answer_df, scale=False, K=200, reduce_func="max"):
+                   answer_df, scale=False, K=200, reduce_func="max", filt=None):
     query_embed = safe_load(query_embed)
     query_df = safe_load(query_df)
     answer_embed = safe_load(answer_embed)
@@ -125,6 +125,8 @@ def _get_similarity(query_embed, query_df, answer_embed,
         similarity_df.append(subset_preds)
     similarity_df = pd.concat(similarity_df).reset_index(drop=True)
     similarity_df['similarity'] = (1 - similarity_df['similarity'].values).astype(float).round(3)
+    if filt is not None:
+        similarity_df.loc[similarity_df.similarity >= filt, "similarity"] = 0.0
     if reduce_func == "max":
         simi_reduce = similarity_df.groupby(['query_image_path', 'answer']).similarity.max().reset_index()
     elif reduce_func == "mean":
@@ -142,7 +144,7 @@ def _get_similarity(query_embed, query_df, answer_embed,
 
 
 def get_similarity(query_df, query_embed, answer_df, answer_embed,
-                   scale=False, K=200, reduce_func="max", save=None):
+                   scale=False, K=200, reduce_func="max", save=None, filt=None):
     query_embed = safe_load(query_embed)
     query_df = safe_load(query_df)
     answer_embed = safe_load(answer_embed)
@@ -156,7 +158,7 @@ def get_similarity(query_df, query_embed, answer_df, answer_embed,
         answer_idx = answer_df[answer_df.animal_type == animal].index.tolist()
         simi.append(_get_similarity(query_embed[query_idx], query_df.iloc[query_idx].reset_index(drop=True),
                                     answer_embed[answer_idx], answer_df.iloc[answer_idx].reset_index(drop=True),
-                                    scale=scale, K=K, reduce_func=reduce_func))
+                                    scale=scale, K=K, reduce_func=reduce_func, filt=filt))
     simi = pd.concat(simi, axis=0).reset_index(drop=True)
     print(f"similarity size {simi.shape}")
     if save is not None:
@@ -186,8 +188,8 @@ def get_prediction(similarity_df, method='simple', N=100):
         s = np.array(predictions[q]['similarity'])
 
         matched_1[q] = s[0]
-        matched_3[q] = (np.mean(s[:3]) + matched_1[q]) / 2
-        matched_10[q] = (np.mean(s[:10]) + matched_1[q] + matched_3[q]) / 3
+        matched_3[q] = np.mean(s[:3]) + s[0]
+        matched_10[q] = np.mean(s[:10]) + s[0]
 
         predictions[q]['answer'] = ",".join(predictions[q]['answer'])
         predictions[q]['similarity'] = ",".join([str(p) for p in predictions[q]['similarity']])
@@ -220,48 +222,41 @@ def create_input_file(path):
     return df
 
 
-def run_predict(name, model, device, data, img_type='origin'):
-    if img_type == "head":
-        img_type = "data_crop_head"
-    elif img_type == "body":
-        img_type = "data_crop_body"
-    else:
-        img_type = "data"
-    lost_query_path = f"/data/hse/{img_type}/{data}/lost/lost/"
-    lost_answer_path = f"/data/hse/{img_type}/{data}/lost/synthetic_found/"
-    found_query_path = f"/data/hse/{img_type}/{data}/found/found/"
-    found_answer_path = f"/data/hse/{img_type}/{data}/found/synthetic_lost/"
+def run_predict(save_dir, data_dir, model, filt=None, device='cuda:0'):
+    lost_query_path = Path(data_dir) / "lost/lost/"
+    lost_answer_path = Path(data_dir) / "lost/synthetic_found/"
+    found_query_path = Path(data_dir) / "found/found/"
+    found_answer_path = Path(data_dir) / "found/synthetic_lost/"
 
-    lost_query = f"/data/hse/{img_type}/lost_query.csv"
-    lost_answer = f"/data/hse/{img_type}/lost_answer.csv"
-    found_query = f"/data/hse/{img_type}/found_query.csv"
-    found_answer = f"/data/hse/{img_type}/found_answer.csv"
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    lost_query = save_dir / "lost_query.csv"
+    lost_answer = save_dir / "lost_answer.csv"
+    found_query = save_dir / "found_query.csv"
+    found_answer = save_dir / "found_answer.csv"
 
     create_input_file(lost_query_path).to_csv(lost_query, index=False)
     create_input_file(lost_answer_path).to_csv(lost_answer, index=False)
     create_input_file(found_query_path).to_csv(found_query, index=False)
     create_input_file(found_answer_path).to_csv(found_answer, index=False)
 
-    save_folder = Path(f"/data/hse/prediction/{name}") / f"{data}"
-    save_folder.mkdir(parents=True, exist_ok=True)
-
-    lost_query_emb = save_folder / f"lost_query.npy"
-    lost_answer_emb = save_folder /  f"lost_answer.npy"
-    found_query_emb = save_folder / "found_query.npy"
-    found_answer_emb = save_folder / "found_answer.npy"
+    lost_query_emb = save_dir / f"lost_query.npy"
+    lost_answer_emb = save_dir /  f"lost_answer.npy"
+    found_query_emb = save_dir / "found_query.npy"
+    found_answer_emb = save_dir / "found_answer.npy"
 
     get_embeddings(model, lost_query, device, lost_query_emb)
     get_embeddings(model, lost_answer, device, lost_answer_emb)
     get_embeddings(model, found_query, device, found_query_emb)
     get_embeddings(model, found_answer, device, found_answer_emb)
 
-    simi_lost = save_folder / "lost_simi.csv"
-    simi_found = save_folder / "found_simi.csv"
-    get_similarity(lost_query, lost_query_emb, lost_answer, lost_answer_emb, save=simi_lost)
-    get_similarity(found_query, found_query_emb, found_answer, found_answer_emb, save=simi_found)
+    simi_lost = save_dir / "lost_simi.csv"
+    simi_found = save_dir / "found_simi.csv"
+    get_similarity(lost_query, lost_query_emb, lost_answer, lost_answer_emb, save=simi_lost, filt=filt)
+    get_similarity(found_query, found_query_emb, found_answer, found_answer_emb, save=simi_found, filt=filt)
 
     pred_lost = get_prediction(simi_lost)
     pred_found = get_prediction(simi_found)
     preds = pd.concat([pred_lost, pred_found], axis=0).reset_index(drop=True)
-    preds.to_csv(save_folder / "preds.tsv", index=False, sep='\t')
-    print(f"save in {save_folder / 'preds.tsv'}")
+    preds.to_csv(save_dir / "preds.tsv", index=False, sep='\t')
+    print(f"save in {save_dir / 'preds.tsv'}")

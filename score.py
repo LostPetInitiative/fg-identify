@@ -147,10 +147,8 @@ def main(preds_path, data_dir, part, method_descr):
     return outdir
 
 
-def score_preds(preds_path, data_dir, parts, compressed):
-    assert len(parts) == 1, 'Only scoring on a single subset is currently supported.'
-    part = parts[0]
-    true_path = Path(data_dir) / part / 'registry.csv'
+def score_preds(preds_path, data_dir, parts=None, compressed=None):
+    true_path = Path(data_dir)  / 'registry.csv'
     return score_part(true_path, preds_path)
 
 

@@ -88,6 +88,7 @@ class LitModule(pl.LightningModule):
             len_train_dl: int,
             max_epochs: int,
             bnneck=False,
+            arcface=True,
             **kw,
     ):
         super().__init__()
@@ -102,14 +103,18 @@ class LitModule(pl.LightningModule):
             self.embedding_size = self.model.get_classifier().in_features
         self.model.reset_classifier(num_classes=0, global_pool="avg")
         self.dropout = nn.Dropout(0.2)
-        self.arc = ArcMarginProduct(
-            in_features=self.embedding_size,
-            out_features=num_classes,
-            s=arc_s,
-            m=arc_m,
-            easy_margin=arc_easy_margin,
-            ls_eps=arc_ls_eps,
-        )
+        self.arcface = arcface
+        if arcface:
+            self.arc = ArcMarginProduct(
+                in_features=self.embedding_size,
+                out_features=num_classes,
+                s=arc_s,
+                m=arc_m,
+                easy_margin=arc_easy_margin,
+                ls_eps=arc_ls_eps,
+            )
+        else:
+            self.arc = nn.Linear(self.embedding_size, num_classes)
         if bnneck:
             self.bnneck = nn.BatchNorm1d(self.embedding_size)
 
@@ -149,8 +154,10 @@ class LitModule(pl.LightningModule):
 
         if hasattr(self, 'bnneck'):
             embeddings = self.bnneck(embeddings)
-
-        outputs = self.arc(embeddings, targets, self.device)
+        if self.arcface:
+            outputs = self.arc(embeddings, targets, self.device)
+        else:
+            outputs = self.arc(embeddings)
         loss = self.loss_fn(outputs, targets)
         acc = np.mean((torch.argmax(outputs, 1).cpu().numpy() == targets.cpu().numpy())).item()
         self.log(f"{step}_loss", loss)

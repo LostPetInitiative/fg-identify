@@ -1,5 +1,5 @@
 import os.path
-from pytorch_lightning.loggers import WandbLogger
+# from pytorch_lightning.loggers import WandbLogger
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning import Trainer
@@ -11,7 +11,7 @@ import torch
 import os
 import pytorch_lightning as pl
 import timm
-import wandb
+# import wandb
 
 from dataset import LitDataModule
 from model import LitModule
@@ -48,7 +48,7 @@ def train(cfg, debug, full, device):
     print('-----------------------------------------------------------')
     print(f"Init WANDB project={cfg['project']}, name={cfg['name']}")
     print('-----------------------------------------------------------')
-    loggers = [WandbLogger(project=cfg['project'], name=cfg['name'])]
+    # loggers = [WandbLogger(project=cfg['project'], name=cfg['name'])]
     trainer = Trainer(
         accumulate_grad_batches=cfg['accumulate_grad_batches'],
         auto_lr_find=cfg['auto_lr_find'],
@@ -63,7 +63,7 @@ def train(cfg, debug, full, device):
         stochastic_weight_avg=cfg['stochastic_weight_avg'],
         limit_train_batches=cfg['limit_train_batches'],
         limit_val_batches=0.5 if full else cfg['limit_val_batches'],
-        logger=loggers
+        # logger=loggers
     )
     with open(os.path.join(cfg['output_dir'], "cfg.yml"), 'w') as f:
         yaml.safe_dump(cfg, f)
@@ -80,11 +80,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", "-c")
-    parser.add_argument("-device", "-d", default=0, type=int)
+    parser.add_argument("--device", "-d", default=0, type=int)
     parser.add_argument("--debug", default=False, action="store_true")
     parser.add_argument("--full", default=False, action="store_true")
     args = parser.parse_args()
-
     cfg = yaml.safe_load(open(args.config))
     # pred_cfg = cfg.pop('predictor')
 
@@ -102,6 +101,9 @@ if __name__ == "__main__":
     if cfg['bnneck']:
         print("USE BNNECK")
         exp_name += "_bnneck"
+    if not cfg['arcface']:
+        print("Use SoftMax head")
+        exp_name += "_softmax"
 
     cfg['name'] = exp_name
     exp_dir = Path(cfg['output_dir']) / exp_name

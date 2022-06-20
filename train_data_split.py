@@ -7,62 +7,36 @@ import pandas as pd
 import cv2
 from pathlib import Path
 
-# For original data
-# individual_id = []
-# image_path = []
-# image_size = []
-#
-# for path in Path("/data/hse/data/data_25/").glob("*/*g"):
-#     iid = str(path.parent.name)
-#     img = cv2.imread(str(path))
-#     if img is not None:
-#         individual_id.append(iid)
-#         image_path.append(str(path))
-#         image_size.append(img.shape[:2])
-#
-# df = pd.DataFrame({"individual_id": individual_id, "image_path": image_path, "image_size": image_size})
-# df = df.sample(frac=1.).reset_index(drop=True)
-# train = df.iloc[:-1000]
-# val = df.iloc[-1000:].reset_index(drop=True)
-# train.to_csv("/data/hse/data/train.csv", index=False)
-# val.to_csv("/data/hse/data/val.csv", index=False)
 
-# For body crop data
-individual_id = []
-image_path = []
-image_size = []
+def train_data_split(data_dir, num_test=1000):
+    individual_id = []
+    image_path = []
+    image_size = []
 
-for path in Path("/data/hse/data_crop_body/data_25/").glob("*/*g"):
-    iid = str(path.parent.name)
-    img = cv2.imread(str(path))
-    if img is not None:
-        individual_id.append(iid)
-        image_path.append(str(path))
-        image_size.append(img.shape[:2])
+    data_dir = Path(data_dir)
 
-df = pd.DataFrame({"individual_id": individual_id, "image_path": image_path, "image_size": image_size})
-df = df.sample(frac=1.).reset_index(drop=True)
-train = df.iloc[:-1000]
-val = df.iloc[-1000:].reset_index(drop=True)
-train.to_csv("/data/hse/data_crop_body/train.csv", index=False)
-val.to_csv("/data/hse/data_crop_body/val.csv", index=False)
+    for path in data_dir.glob("*/*g"):
+        iid = str(path.parent.name)
+        img = cv2.imread(str(path))
+        if img is not None:
+            individual_id.append(iid)
+            image_path.append(str(path))
+            image_size.append(img.shape[:2])
 
-# For head crop data
-individual_id = []
-image_path = []
-image_size = []
+    df = pd.DataFrame({"individual_id": individual_id, "image_path": image_path, "image_size": image_size})
+    df = df.sample(frac=1.).reset_index(drop=True)
+    train = df.iloc[:-num_test]
+    val = df.iloc[-num_test:].reset_index(drop=True)
+    train.to_csv(data_dir / "train.csv", index=False)
+    val.to_csv(data_dir / "val.csv", index=False)
+    print(f"train/val dataframe saved in {data_dir}")
 
-for path in Path("/data/hse/data_crop_head/data_25/").glob("*/*g"):
-    iid = str(path.parent.name)
-    img = cv2.imread(str(path))
-    if img is not None:
-        individual_id.append(iid)
-        image_path.append(str(path))
-        image_size.append(img.shape[:2])
 
-df = pd.DataFrame({"individual_id": individual_id, "image_path": image_path, "image_size": image_size})
-df = df.sample(frac=1.).reset_index(drop=True)
-train = df.iloc[:-1000]
-val = df.iloc[-1000:].reset_index(drop=True)
-train.to_csv("/data/hse/data_crop_head/train.csv", index=False)
-val.to_csv("/data/hse/data_crop_head/val.csv", index=False)
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument('--data_dir', type=str)
+    parser.add_argument('--num_test', type=int, default=1000)
+    args = parser.parse_args()
+    train_data_split(args.data_dir, args.num_test)
